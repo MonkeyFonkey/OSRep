@@ -1,190 +1,439 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
 #include <dirent.h>
 
-#define MAX_OPTS 10
+int checkFileType(char *path) {
+    struct stat buf;
 
-void display_menu(char type)
-{
-    switch (type)
-    {
-    case 'f': // Regular file
-        printf("\nOptions:\n");
-        printf("    -a : Display file contents\n");
-        printf("    -l : Display file permissions and other information\n");
-        break;
-    case 'd': // Directory
-        printf("\nOptions:\n");
-        printf("    -a : Display directory contents\n");
-        printf("    -l : Display directory permissions and other information\n");
-        printf("    -c : Count the number of files in the directory\n");
-        break;
-    case 'l': // Symbolic link
-        printf("\nOptions:\n");
-        printf("    -t : Display the target of the symbolic link\n");
-        break;
-    default:
-        printf("\nInvalid file type.\n");
+    if(lstat(path, &buf) == 0) {
+        if(S_ISLNK(buf.st_mode) != 0) {
+            return 0;
+        }
     }
-}
-
-void display_file_info(char *path, char *opts)
-{
-    struct stat st;
-    if (stat(path, &st) == -1)
-    {
-        perror("stat");
-        return;
-    }
-
-    char type;
-    if (S_ISREG(st.st_mode)) //regular file
-        type = 'f';
-    else if (S_ISDIR(st.st_mode))//directory
-        type = 'd';
-    else if (S_ISLNK(st.st_mode))//link
-        type = 'l';
-    else
-        type = '-';
-
-    printf("Name: %s\n", path);
-    printf("Type: %c\n", type);
-
-    display_menu(type);
-
-    char opt_list[MAX_OPTS] = {0};
-    int opt_count = 0;
-
-    //extracts the options from the opts string and uses them to determine which information to display for the file.
-    for (int i = 0; i < strlen(opts); i++)
-    {
-        if (opts[i] == '-')
-        {
-            i++;
-            while (opts[i] != ' ' && opts[i] != '\0')
-            {
-                opt_list[opt_count++] = opts[i++];
-            }
-            break;
+    if(stat(path, &buf) == 0) {
+        if(S_ISREG(buf.st_mode) != 0) {
+            return 1;
+        }
+        else if(S_ISDIR(buf.st_mode) != 0) {
+            return 2;
         }
     }
 
-    for (int i = 0; i < opt_count; i++)
-    {
-        switch (opt_list[i])
-        {
-        case 'a': 
-            if (type == 'f')//if its a file:
-            {
-                FILE *f = fopen(path, "r"); //opening the file
-                if (f == NULL)
-                {
-                    perror("fopen");
-                    return;
-                }
+    return -1;
+}
 
-                char c;
-                printf("\nContents:\n");//printing the content of the file
-                while ((c = fgetc(f)) != EOF)
-                {
-                    printf("%c", c);
-                }
-                fclose(f);
-            }
-            else if (type == 'd')//if its a directory
-            {
-                DIR *d = opendir(path);
-                if (d == NULL)
-                {
-                    perror("opendir");
-                    return;
-                }
+int verifyInput(char *params, int type) {
+    if(params[0] != '-') {
+        printf("\nThe command must start with an '-'\n");
+        return -1;
+    }
 
-                struct dirent *entry;
-                printf("\nContents:\n"); //reading the content:
-                while ((entry = readdir(d)) != NULL)
-                {
-                    printf("%s\n", entry->d_name);
-                }
-                closedir(d);
+    //printf("p: %s\n", params);
+    int not = 0;
+
+    //printf("size: %d\n", strlen(params));
+
+    if(type == 0) {
+        for(int i = 1; i < strlen(params)-1; i++) {
+            //printf("- %c\n", params[i]);
+            if(params[i] == 'n' || params[i] == 'd' || params[i] == 'h' || params[i] == 'm' || params[i] == 'a' || params[i] == 'l') {
+                //
             }
-            break;
-        case 'l':
-            if (type == 'f' || type == 'd')
-            {
-                struct stat st;
-                if (lstat(path, &st) == -1)
-                {
-                    perror("lstat");
-                    return;
-                }
-                printf("\nPermissions:\n");
-                printf((S_ISDIR(st.st_mode)) ? "d" : "-");
-                printf((st.st_mode & S_IRUSR) ? "r" : "-");
-                printf((st.st_mode & S_IWUSR) ? "w" : "-");
-                printf((st.st_mode & S_IXUSR) ? "x" : "-");
-                printf((st.st_mode & S_IRGRP) ? "r" : "-");
-                printf((st.st_mode & S_IWGRP) ? "w" : "-");
-                printf((st.st_mode & S_IXGRP) ? "x" : "-");
-                printf((st.st_mode & S_IROTH) ? "r" : "-");
-                printf((st.st_mode & S_IWOTH) ? "w" : "-");
-                printf((st.st_mode & S_IXOTH) ? "x" : "-");
+            else {
+                not = 1;
+            }
+        }
+
+        if(not) 
+            return 0;
+        else
+            return 1;
+    }
+    else if(type == 2) {
+        for(int i = 1; i < strlen(params)-1; i++) {
+            //printf("- %c\n", params[i]);
+            if(params[i] == 'n' || params[i] == 'd' || params[i] == 'a' || params[i] == 'c') {
+                //
+            }
+            else {
+                not = 1;
+            }
+        }
+
+        if(not) 
+            return 0;
+        else
+            return 1;
+    }
+    else {
+        for(int i = 1; i < strlen(params)-1; i++) {
+            //printf("- %c\n", params[i]);
+            if(params[i] == 'n' || params[i] == 'l' || params[i] == 'd' || params[i] == 't' || params[i] == 'a') {
+                //
+            }
+            else {
+                not = 1;
+            }
+        }
+
+        if(not) 
+            return 0;
+        else
+            return 1;
+    }
+}
+
+void handleSym(char *path) {
+    char params[10];
+
+    int deleted = 0;
+
+    struct stat buf;
+    
+    printf("---- MENU ----\n");
+    printf("* n: name of symbolic link\n");
+    printf("* l: delete symbolic link\n");
+    printf("* d: size of symbolic link\n");
+    printf("* t: size of target\n");
+    printf("* a: access rights\n");
+    printf("\n---- EXAMPLE INPUT ----\n");
+    printf("-nl\n");
+    printf("Used for displaying name of file and deleting the symbolic link.\n");
+
+    printf("\n\nPlease enter your options\n\n");
+    printf("STANDARD INPUT: ");
+    fgets(params, 10, stdin);
+
+    if(verifyInput(params, 1) != -1) {
+        for(int i = 1; i < strlen(params)-1 && deleted == 0; i++) {
+            if (params[i] == 'n') {
+                printf("Name: %s\n", path);
                 printf("\n");
             }
-            else if (type == 'l')
-            {
-                char target[256] = {0};
-                ssize_t len = readlink(path, target, sizeof(target) - 1);
-                if (len == -1)
-                {
-                    perror("readlink");
-                    return;
+            if (params[i] == 'd') {
+                if(lstat(path, &buf)) {
+                    printf("error\n");
                 }
-                printf("\nTarget: %s\n", target);
+                else {
+                    printf("Size of symbolic link: %d bytes\n", (int)buf.st_size);
+                    printf("\n");
+                }
             }
-            break;
-        case 'c'://counts the number of files in the directory
-            if (type == 'd')
-            {
-                DIR *d = opendir(path);
-                if (d == NULL)
-                {
-                    perror("opendir");
-                    return;
+            if (params[i] == 't') {
+                if(stat(path, &buf)) {
+                    printf("error\n");
                 }
-                
-                struct dirent *entry;
-                int count = 0;
-                while ((entry = readdir(d)) != NULL)
-                {
-                    count++;
+                else {
+                    printf("Size of target file: %d bytes\n", (int)buf.st_size);
+                    printf("\n");
                 }
-                closedir(d);
-                printf("\nNumber of files in directory: %d\n", count);
             }
-            break;
-        default:
-            printf("\nInvalid option: %c\n", opt_list[i]);
+            if (params[i] == 'l') {
+                if(lstat(path, &buf)) {
+                    printf("error\n");
+                }
+                else {
+                    if(unlink(path) == 0) {
+                        printf("Symlink deleted successfully.\n");
+                        deleted = 1;
+                    }
+                    else {
+                        printf("Error deleting the symlink.\n");
+                    }
+                    printf("\n");
+                }
+            }
+            if (params[i] == 'a') {
+                if(lstat(path, &buf)) {
+                    printf("error\n");
+                }
+                else {
+                    printf("Access rights: \n");
+
+                    printf("User:\n");
+                    buf.st_mode & S_IRUSR ? printf("   Read - yes\n") : printf("   Read - no\n");
+                    buf.st_mode & S_IWUSR ? printf("   Write - yes\n") : printf("   Write - no\n");
+                    buf.st_mode & S_IXUSR ? printf("   Execute - yes\n") : printf("   Execute - no\n");
+                        
+                    printf("Group:\n");
+                    buf.st_mode & S_IRGRP ? printf("   Read - yes\n") : printf("   Read - no\n");
+                    buf.st_mode & S_IWGRP ? printf("   Write - yes\n") : printf("   Write - no\n");
+                    buf.st_mode & S_IXGRP ? printf("   Execute - yes\n") : printf("   Execute - no\n");
+
+                    printf("Other:\n");
+                    buf.st_mode & S_IROTH ? printf("   Read - yes\n") : printf("   Read - no\n");
+                    buf.st_mode & S_IWOTH ? printf("   Write - yes\n") : printf("   Write - no\n");
+                    buf.st_mode & S_IXOTH ? printf("   Execute - yes\n") : printf("   Execute - no\n");
+
+                    printf("\n");
+                }
+            }
         }
     }
+    else {
+        printf("\n\nERROR. Input not right.\n");
+    }
+
+    printf("\n\n-----------------------------------------------\n\n");
 }
 
-int main(int argc, char **argv)
-{
-    if (argc < 2)
-    {
-        printf("Usage: %s <path1> [<path2> ...]\n", argv[0]);
-        return 0;
+void handleRegular(char *path) {
+    char params[10];
+
+    struct stat buf;
+    
+    printf("---- MENU ----\n");
+    printf("* n: name of file\n");
+    printf("* d: size of file\n");
+    printf("* h: count of hard links\n");
+    printf("* m: last time of modifications\n");
+    printf("* a: access rights\n");
+    printf("* l: create symbolic link *waits for input*\n");
+    printf("\n---- EXAMPLE INPUT ----\n");
+    printf("-nh\n");
+    printf("Used for displaying name of file and the count of hard links\n");
+
+    printf("\n\nPlease enter your options\n\n");
+    printf("STANDARD INPUT: ");
+    fgets(params, 10, stdin);
+
+    if(verifyInput(params, 0) != -1) {
+        for(int i = 1; i < strlen(params)-1; i++) {
+            if (params[i] == 'n') {
+                printf("Name: %s\n", path);
+                printf("\n");
+            }
+            if (params[i] == 'd') {
+                if(stat(path, &buf)) {
+                    printf("error\n");
+                }
+                else {
+                    printf("Size: %d bytes\n", (int)buf.st_size);
+                    printf("\n");
+                }
+            }
+            if (params[i] == 'h') {
+                if(stat(path, &buf)) {
+                    printf("error\n");
+                }
+                else {
+                    printf("Hard links count: %d\n", (int)buf.st_nlink);
+                    printf("\n");
+                }
+            }
+            if (params[i] == 'm') {
+                if(stat(path, &buf)) {
+                    printf("error\n");
+                }
+                else {
+                    printf("Time of last modification: %ld\n", buf.st_mtime);
+                    printf("\n");
+                }
+            }
+            if (params[i] == 'a') {
+                if(stat(path, &buf)) {
+                    printf("error\n");
+                }
+                else {
+                    printf("Access rights: \n");
+
+                    printf("User:\n");
+                    buf.st_mode & S_IRUSR ? printf("   Read - yes\n") : printf("   Read - no\n");
+                    buf.st_mode & S_IWUSR ? printf("   Write - yes\n") : printf("   Write - no\n");
+                    buf.st_mode & S_IXUSR ? printf("   Execute - yes\n") : printf("   Execute - no\n");
+                        
+                    printf("Group:\n");
+                    buf.st_mode & S_IRGRP ? printf("   Read - yes\n") : printf("   Read - no\n");
+                    buf.st_mode & S_IWGRP ? printf("   Write - yes\n") : printf("   Write - no\n");
+                    buf.st_mode & S_IXGRP ? printf("   Execute - yes\n") : printf("   Execute - no\n");
+
+                    printf("Other:\n");
+                    buf.st_mode & S_IROTH ? printf("   Read - yes\n") : printf("   Read - no\n");
+                    buf.st_mode & S_IWOTH ? printf("   Write - yes\n") : printf("   Write - no\n");
+                    buf.st_mode & S_IXOTH ? printf("   Execute - yes\n") : printf("   Execute - no\n");
+
+                    printf("\n");
+                }
+            }
+
+            if (params[i] == 'l') {
+                char link[15];
+
+                printf("Enter name of symlink: ");
+                fgets(link, 15, stdin);
+
+                //remove the null character at the end if present
+                char *newline = strchr(link, '\n');
+                if (newline != NULL) {
+                    *newline = '\0';
+                }
+
+                if(stat(path, &buf)) {
+                    printf("error\n");
+                }
+                else {
+                    if(symlink(path, link) == 0) {
+                        printf("Success! You created a symbolic link: %s\n", link);
+                        printf("Here's how it looks:\n");
+                        char command[256];
+                        sprintf(command, "ls -l %s", link);
+                        system(command);
+                    }
+                    else {
+                        printf("It didn't work.");
+                    }
+                    printf("\n");
+                }
+            }
+        }
     }
-    for (int i = 1; i < argc; i++)
-    {
-        printf("\nFile %d:\n", i);
-        display_file_info(argv[i], argv[i]);
+    else {
+        printf("\n\nERROR. Input not right.\n");
     }
 
+    printf("\n\n-----------------------------------------------\n\n");
+}
+
+void handleDirectory(char *path) {
+    char params[10];
+
+    struct stat buf;
+    
+    printf("---- MENU ----\n");
+    printf("* n: name of directory\n");
+    printf("* d: size of directory\n");
+    printf("* a: access rights\n");
+    printf("* c: number of files with the .c extension\n");
+    printf("\n---- EXAMPLE INPUT ----\n");
+    printf("-nd\n");
+    printf("Used for displaying the name of directory and the size of the directory\n");
+
+    printf("\n\nPlease enter your options\n\n");
+    printf("STANDARD INPUT: ");
+    fgets(params, 10, stdin);
+
+    if(verifyInput(params, 2) != -1) {
+        for(int i = 1; i < strlen(params)-1; i++) {
+            if (params[i] == 'n') {
+                printf("Name: %s\n", path);
+                printf("\n");
+            }
+            if (params[i] == 'd') {
+                if(stat(path, &buf)) {
+                    printf("error\n");
+                }
+                else {
+                    printf("Size: %d bytes\n", (int)buf.st_size);
+                    printf("\n");
+                }
+            }
+            if (params[i] == 'a') {
+                if(stat(path, &buf)) {
+                    printf("error\n");
+                }
+                else {
+                    printf("Access rights: \n");
+
+                    printf("User:\n");
+                    buf.st_mode & S_IRUSR ? printf("   Read - yes\n") : printf("   Read - no\n");
+                    buf.st_mode & S_IWUSR ? printf("   Write - yes\n") : printf("   Write - no\n");
+                    buf.st_mode & S_IXUSR ? printf("   Execute - yes\n") : printf("   Execute - no\n");
+                        
+                    printf("Group:\n");
+                    buf.st_mode & S_IRGRP ? printf("   Read - yes\n") : printf("   Read - no\n");
+                    buf.st_mode & S_IWGRP ? printf("   Write - yes\n") : printf("   Write - no\n");
+                    buf.st_mode & S_IXGRP ? printf("   Execute - yes\n") : printf("   Execute - no\n");
+
+                    printf("Other:\n");
+                    buf.st_mode & S_IROTH ? printf("   Read - yes\n") : printf("   Read - no\n");
+                    buf.st_mode & S_IWOTH ? printf("   Write - yes\n") : printf("   Write - no\n");
+                    buf.st_mode & S_IXOTH ? printf("   Execute - yes\n") : printf("   Execute - no\n");
+
+                    printf("\n");
+                }
+            }
+
+            if (params[i] == 'c') {
+                
+                DIR *dir;
+                struct dirent *ent;
+                int count = 0;
+                char *extension = ".c";
+                char *dir_name;
+                strcpy(dir_name, path);
+                struct stat buf;
+                char absolute_path[1024];
+
+                //get absolute path
+                 if (stat(path, &buf) == 0) {
+                    if (S_ISDIR(buf.st_mode)) {
+                        printf("%s is a directory\n", path);
+                    } else {
+                        printf("%s is a file\n", path);
+                    }
+                    if (realpath(path, absolute_path) == NULL) {
+                        perror("realpath");
+                    }
+                    printf("Absolute path: %s\n", absolute_path);
+                } else {
+                    perror("stat");
+                }
+
+                if ((dir = opendir(dir_name)) != NULL) {
+                    while ((ent = readdir(dir)) != NULL) {
+                        if (ent->d_type == DT_REG) {
+                            char *file_ext = strrchr(ent->d_name, '.');
+                            if (file_ext != NULL && strcmp(file_ext, extension) == 0) {
+                                count++;
+                            }
+                        }
+                    }
+                    closedir(dir);
+                    printf("Number of .c files in %s: %d\n", dir_name, count);
+                } else {
+                    perror("Could not open directory");
+                }
+
+            }
+        }
+    }
+    else {
+        printf("\n\nERROR. Input not right.\n");
+    }
+
+    printf("\n\n-----------------------------------------------\n\n");
+}
+
+int main(int argc, char **argv) {
+
+    if(argc > 1) {
+        for(int i = 1; i < argc; i++) {
+            int type = checkFileType(argv[i]);
+
+            if(type == 0) {
+                printf("%s : SYMBOLIC LINK\n", argv[i]);
+                printf("\n\n==========================\n\n");
+                handleSym(argv[i]);
+            }
+            else if(type == 1) {
+                printf("%s : REGULAR FILE\n", argv[i]);
+                printf("\n\n==========================\n\n");
+                handleRegular(argv[i]);
+            }
+            else if(type == 2) {
+                printf("%s : DIRECTORY\n", argv[i]);
+                printf("\n\n==========================\n\n");
+                handleDirectory(argv[i]);
+            }
+            else {
+                printf("You didn't enter a regular file/directory/symbolic link");
+            }
+        }
+    }
     return 0;
 }
