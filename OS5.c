@@ -409,6 +409,53 @@ void handleDirectory(char *path) {
     printf("\n\n-----------------------------------------------\n\n");
 }
 
+/*.......................................
+
+    Part 2 of the project
+*/
+void compile_file(char* filename) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        char* cmd = (char*) malloc(strlen(filename) + 10);
+        sprintf(cmd, "gcc -o %s.out %s", filename, filename);
+        system(cmd);
+        free(cmd);
+        char* err_cmd = (char*) malloc(strlen(filename) + 20);
+        sprintf(err_cmd, "gcc -o %s.out %s 2>&1 >/dev/null | grep error | wc -l", filename, filename);
+        char* warn_cmd = (char*) malloc(strlen(filename) + 20);
+        sprintf(warn_cmd, "gcc -o %s.out %s 2>&1 >/dev/null | grep warning | wc -l", filename, filename);
+        int errors = system(err_cmd);
+        int warnings = system(warn_cmd);
+        printf("%s: %d errors, %d warnings\n", filename, errors, warnings);
+        free(err_cmd);
+        free(warn_cmd);
+        exit(0);
+    }
+    else if (pid < 0) {
+        perror("Error forking child process");
+    }
+}
+
+void create_text_file(char* dirname) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        char* filename = (char*) malloc(strlen(dirname) + 10);
+        sprintf(filename, "%s_file.txt", dirname);
+        FILE* fp = fopen(filename, "w");
+        if (fp != NULL) {
+            fprintf(fp, "This is a text file created by the program.\n");
+            fclose(fp);
+        }
+        free(filename);
+        exit(0);
+    }
+    else if (pid < 0) {
+        perror("Error forking child process");
+    }
+}
+
+
+
 int main(int argc, char **argv) {
 
     if(argc > 1) {
