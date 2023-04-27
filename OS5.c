@@ -182,7 +182,7 @@ void handleSym(char *path) {
     printf("\n\n-----------------------------------------------\n\n");
 }
 
-void handleRegular(char *path) {
+void handleRegular(char *filename) {
     char params[10];
 
     struct stat buf;
@@ -202,14 +202,35 @@ void handleRegular(char *path) {
     printf("STANDARD INPUT: ");
     fgets(params, 10, stdin);
 
+    char *extention = ".c";
+
+    if(strstr(filename, extention) != NULL){
+         
+        // Wait for all child processes to finish
+        int status;
+        pid_t pid;
+        while ((pid = wait(&status)) > 0) {
+            if (WIFEXITED(status)) {
+                printf("Child process %d exited with status %d\n", pid, WEXITSTATUS(status));
+            }
+            else {
+                printf("Child process %d exited abnormally\n", pid);
+            }
+        }
+
+    }
+    else{
+        printf("Not a .c type of file!\n");
+    }
+
     if(verifyInput(params, 0) != -1) {
         for(int i = 1; i < strlen(params)-1; i++) {
             if (params[i] == 'n') {
-                printf("Name: %s\n", path);
+                printf("Name: %s\n", filename);
                 printf("\n");
             }
             if (params[i] == 'd') {
-                if(stat(path, &buf)) {
+                if(stat(filename, &buf)) {
                     printf("error\n");
                 }
                 else {
@@ -218,7 +239,7 @@ void handleRegular(char *path) {
                 }
             }
             if (params[i] == 'h') {
-                if(stat(path, &buf)) {
+                if(stat(filename, &buf)) {
                     printf("error\n");
                 }
                 else {
@@ -227,7 +248,7 @@ void handleRegular(char *path) {
                 }
             }
             if (params[i] == 'm') {
-                if(stat(path, &buf)) {
+                if(stat(filename, &buf)) {
                     printf("error\n");
                 }
                 else {
@@ -236,7 +257,7 @@ void handleRegular(char *path) {
                 }
             }
             if (params[i] == 'a') {
-                if(stat(path, &buf)) {
+                if(stat(filename, &buf)) {
                     printf("error\n");
                 }
                 else {
@@ -273,11 +294,11 @@ void handleRegular(char *path) {
                     *newline = '\0';
                 }
 
-                if(stat(path, &buf)) {
+                if(stat(filename, &buf)) {
                     printf("error\n");
                 }
                 else {
-                    if(symlink(path, link) == 0) {
+                    if(symlink(filename, link) == 0) {
                         printf("Success! You created a symbolic link: %s\n", link);
                         printf("Here's how it looks:\n");
                         char command[256];
@@ -454,11 +475,45 @@ void create_text_file(char* dirname) {
     }
 }
 
+void handle_arg(char* arg) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        // Determine the type of the argument
+        DIR* dir = opendir(arg);
+        if (dir != NULL) {
+            // Argument is a directory
+            closedir(dir);
+            create_text_file(arg);
+            exit(0);
+        }
+        else {
+            // Argument is a file
+            closedir(dir);
+            char* ext = strrchr(arg, '.');
+            if (ext != NULL && strcmp(ext, ".c") == 0) {
+                // Argument is a .c file
+                compile_file(arg);
+            }
+            exit(0);
+        }
+    }
+    else if (pid < 0) {
+        perror("Error forking child process");
+    }
+}
+
+
+
 
 
 int main(int argc, char **argv) {
 
+
     if(argc > 1) {
+         for (int i = 1; i < argc; i++) {
+             handle_arg(argv[i]);
+        }
+
         for(int i = 1; i < argc; i++) {
             int type = checkFileType(argv[i]);
 

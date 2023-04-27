@@ -17,14 +17,13 @@ if [[ "$file" != *.c ]]; then
 fi
 
 # Compile the file and capture the output of the compilation
-output=$(gcc -o "${file%.c}" "$file" 2>&1)
+output=$(gcc -Wall "${file%.c}" "$file" 2>&1)
 
 # Print the output of the compilation
-echo "$output"
+#echo "$output"
 
 # Count the number of errors and warnings
 errors=$(echo "$output" | grep -c "error")
 warnings=$(echo "$output" | grep -c "warning")
 
-# Print the number of errors and warnings
 echo "$file: $errors errors, $warnings warnings"
