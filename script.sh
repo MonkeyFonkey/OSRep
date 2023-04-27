@@ -23,7 +23,7 @@ output=$(gcc -Wall -o "${file%.c}" "$file" 2>&1)
 #echo "$output"
 
 # Count the number of errors and warnings
-errors=$(echo "$output" | grep -c "error")
+errors=$(echo "$output" | grep -c "error:")
 warnings=$(echo "$output" | grep -c "warning")
 
 echo "$file: $errors errors, $warnings warnings"

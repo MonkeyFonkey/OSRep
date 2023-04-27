@@ -204,25 +204,7 @@ void handleRegular(char *filename) {
 
     char *extention = ".c";
 
-    if(strstr(filename, extention) != NULL){
-         
-        // Wait for all child processes to finish
-        int status;
-        pid_t pid;
-        while ((pid = wait(&status)) > 0) {
-            if (WIFEXITED(status)) {
-                printf("Child process %d exited with status %d\n", pid, WEXITSTATUS(status));
-            }
-            else {
-                printf("Child process %d exited abnormally\n", pid);
-            }
-        }
-
-    }
-    else{
-        printf("Not a .c type of file!\n");
-    }
-
+    
     if(verifyInput(params, 0) != -1) {
         for(int i = 1; i < strlen(params)-1; i++) {
             if (params[i] == 'n') {
@@ -316,6 +298,26 @@ void handleRegular(char *filename) {
     else {
         printf("\n\nERROR. Input not right.\n");
     }
+
+    if(strstr(filename, extention) != NULL){
+         
+        // Wait for all child processes to finish
+        int status;
+        pid_t pid;
+        while ((pid = wait(&status)) > 0) {
+            if (WIFEXITED(status)) {
+                printf("Child process %d exited with status %d\n", pid, WEXITSTATUS(status));
+            }
+            else {
+                printf("Child process %d exited abnormally\n", pid);
+            }
+        }
+
+    }
+    else{
+        printf("Not a .c type of file!\n");
+    }
+
 
     printf("\n\n-----------------------------------------------\n\n");
 }
