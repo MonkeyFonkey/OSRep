@@ -17,7 +17,7 @@ if [[ "$file" != *.c ]]; then
 fi
 
 # Compile the file and capture the output of the compilation
-output=$(gcc -Wall "${file%.c}" "$file" 2>&1)
+output=$(gcc -Wall -o "${file%.c}" "$file" 2>&1)
 
 # Print the output of the compilation
 #echo "$output"

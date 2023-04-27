@@ -196,10 +196,10 @@ void handleRegular(char *filename) {
     printf("* l: create symbolic link *waits for input*\n");
     printf("\n---- EXAMPLE INPUT ----\n");
     printf("-nh\n");
-    printf("Used for displaying name of file and the count of hard links\n");
+    printf("Displays name of the file and the number of hard links\n");
 
     printf("\n\nPlease enter your options\n\n");
-    printf("STANDARD INPUT: ");
+    printf(">> ");
     fgets(params, 10, stdin);
 
     char *extention = ".c";
@@ -501,8 +501,6 @@ void handle_arg(char* arg) {
         perror("Error forking child process");
     }
 }
-
-
 
 
 
