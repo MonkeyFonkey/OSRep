@@ -182,6 +182,35 @@ void handleSym(char *path) {
     printf("\n\n-----------------------------------------------\n\n");
 }
 
+
+void runScriptFileFor_c_file(const char* filename) {
+    char command[100];
+    sprintf(command, "./script.sh %s 2>&1", filename);
+
+    FILE* pipe = popen(command, "r");
+    if (pipe == NULL) {
+        perror("Error executing script.sh");
+        return;
+    }
+
+    char buffer[256];
+    while (fgets(buffer, sizeof(buffer), pipe) != NULL) {
+        printf("%s", buffer);
+    }
+
+    int status = pclose(pipe);
+    if (status == -1) {
+        perror("Error closing pipe");
+    } else {
+        if (WIFEXITED(status)) {
+            printf("Script.sh exited with status %d\n", WEXITSTATUS(status));
+        } else {
+            printf("Script.sh exited abnormally\n");
+        }
+    }
+}
+
+
 void handleRegular(char *filename) {
     char params[10];
 
@@ -299,24 +328,40 @@ void handleRegular(char *filename) {
         printf("\n\nERROR. Input not right.\n");
     }
 
-    if(strstr(filename, extention) != NULL){
-         
-        // Wait for all child processes to finish
-        int status;
-        pid_t pid;
-        while ((pid = wait(&status)) > 0) {
-            if (WIFEXITED(status)) {
-                printf("Child process %d exited with status %d\n", pid, WEXITSTATUS(status));
-            }
-            else {
-                printf("Child process %d exited abnormally\n", pid);
-            }
+if (strstr(filename, extention) != NULL) {
+    // Wait for all child processes to finish
+    int status;
+    pid_t pid;
+
+    // Fork a child process
+    pid = fork();
+
+    if (pid == -1) {
+        perror("Error forking child process");
+        exit(EXIT_FAILURE);
+    } else if (pid == 0) {
+        // Child process
+        runScriptFileFor_c_file(filename);
+        exit(EXIT_SUCCESS);
+    } else {
+        // Parent process
+        // Wait for the child process to finish
+        if (waitpid(pid, &status, 0) == -1) {
+            perror("Error waiting for child process");
+            exit(EXIT_FAILURE);
         }
 
+
+        if (WIFEXITED(status)) {
+            printf("Child process %d exited with status %d\n\n", pid, WEXITSTATUS(status));
+        } else {
+            printf("Child process %d exited abnormally\n\n", pid);
+        }
     }
-    else{
-        printf("Not a .c type of file!\n");
-    }
+} else {
+    printf("Not a .c type of file!\n");
+}
+
 
 
     printf("\n\n-----------------------------------------------\n\n");
@@ -387,7 +432,7 @@ void handleDirectory(char *path) {
                 struct dirent *ent;
                 int count = 0;
                 char *extension = ".c";
-                char *dir_name;
+                char *dir_name = NULL;
                 strcpy(dir_name, path);
                 struct stat buf;
                 char absolute_path[1024];
