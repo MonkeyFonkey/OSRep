@@ -218,6 +218,35 @@ void runScriptFileFor_c_file(const char* filename) {
     }
 }
 
+int computeScore(int numErrors, int numWarnings) {
+    if (numErrors == 0 && numWarnings == 0) {
+        return 10;
+    } else if (numErrors >= 1) {
+        return 1;
+    } else if (numWarnings > 10) {
+        return 2;
+    } else {
+        return 2 + 8 * (10 - numWarnings) / 10;
+    }
+}
+
+int countLinesInFile(const char* filename) {
+    FILE* file = fopen(filename, "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        return -1;
+    }
+
+    int lineCount = 0;
+    char buffer[256];
+    while (fgets(buffer, sizeof(buffer), file) != NULL) {
+        lineCount++;
+    }
+
+    fclose(file);
+    return lineCount;
+}
+
 
 void handleRegular(char *filename) {
     char params[10];
@@ -361,15 +390,36 @@ if (strstr(filename, extention) != NULL) {
 
 
         if (WIFEXITED(status)) {
-            printf("The process with PID %d has ended with the exit code %d\n\n", pid, WEXITSTATUS(status));
+            printf("The process with PID1 %d has ended with the exit code %d\n\n", pid, WEXITSTATUS(status));
+            
+            // Compute the score based on number of errors and warnings
+            int numErrors = 0; // Replace with the actual number of errors
+            int numWarnings = 0; // Replace with the actual number of warnings
+            int score = computeScore(numErrors, numWarnings);
+
+            // Write the score to grades.txt
+            FILE* gradesFile = fopen("grades.txt", "w");
+            if (gradesFile == NULL) {
+                perror("Error opening grades.txt");
+                exit(EXIT_FAILURE);
+            }
+
+            fprintf(gradesFile, "%s: %d\n", filename, score);
+            fclose(gradesFile);
+
 
         } else {
             printf("Child process %d exited abnormally\n\n", pid);
         }
     }
-} else {
-    printf("Not a .c type of file!\n");
-}
+    } else {
+    int lineCount = countLinesInFile(filename);
+    if (lineCount == -1) {
+        printf("Error counting lines in file\n");
+    } else {
+        printf("The file %s has %d lines\n", filename, lineCount);
+    }   
+  }
 
 
 
