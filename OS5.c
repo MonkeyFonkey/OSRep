@@ -9,7 +9,7 @@
 
 #define MAX_FILES 100 // Adjust the maximum number of files as needed
 
-pid_t child_pids[MAX_FILES];
+pid_t child_pids[MAX_FILES] = {-1};
 int num_processes = 0;
 
 
@@ -247,6 +247,15 @@ int countLinesInFile(const char* filename) {
     return lineCount;
 }
 
+int checkFileExtension(const char* filename, const char* extension) {
+    const char* fileExt = strrchr(filename, '.');
+    if (fileExt != NULL) {
+        if (strcmp(fileExt + 1, extension) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
 
 void handleRegular(char *filename) {
     char params[10];
@@ -267,9 +276,6 @@ void handleRegular(char *filename) {
     printf("\n\nPlease enter your options\n\n");
     printf(">> ");
     fgets(params, 10, stdin);
-
-    char *extention = ".c";
-
     
     if(verifyInput(params, 0) != -1) {
         for(int i = 1; i < strlen(params)-1; i++) {
@@ -365,65 +371,8 @@ void handleRegular(char *filename) {
         printf("\n\nERROR. Input not right.\n");
     }
 
-if (strstr(filename, extention) != NULL) {
-    // Wait for all child processes to finish
-    int status;
-    pid_t pid;
+printf("\n\n-----------------------------------------------\n\n");
 
-    // Fork a child process
-    pid = fork();
-
-    if (pid == -1) {
-        perror("Error forking child process");
-        exit(EXIT_FAILURE);
-    } else if (pid == 0) {
-        // Child process
-        runScriptFileFor_c_file(filename);
-        exit(EXIT_SUCCESS);
-    } else {
-        // Parent process
-        // Wait for the child process to finish
-        if (waitpid(pid, &status, 0) == -1) {
-            perror("Error waiting for child process");
-            exit(EXIT_FAILURE);
-        }
-
-
-        if (WIFEXITED(status)) {
-            printf("The process with PID1 %d has ended with the exit code %d\n\n", pid, WEXITSTATUS(status));
-            
-            // Compute the score based on number of errors and warnings
-            int numErrors = 0; // Replace with the actual number of errors
-            int numWarnings = 0; // Replace with the actual number of warnings
-            int score = computeScore(numErrors, numWarnings);
-
-            // Write the score to grades.txt
-            FILE* gradesFile = fopen("grades.txt", "w");
-            if (gradesFile == NULL) {
-                perror("Error opening grades.txt");
-                exit(EXIT_FAILURE);
-            }
-
-            fprintf(gradesFile, "%s: %d\n", filename, score);
-            fclose(gradesFile);
-
-
-        } else {
-            printf("Child process %d exited abnormally\n\n", pid);
-        }
-    }
-    } else {
-    int lineCount = countLinesInFile(filename);
-    if (lineCount == -1) {
-        printf("Error counting lines in file\n");
-    } else {
-        printf("The file %s has %d lines\n", filename, lineCount);
-    }   
-  }
-
-
-
-    printf("\n\n-----------------------------------------------\n\n");
 }
 
 void handleDirectory(char *path) {
@@ -630,8 +579,86 @@ int main(int argc, char **argv) {
                 printf("%s : REGULAR FILE\n", argv[i]);
                 printf("\n\n==========================\n\n");
                 handleRegular(argv[i]);
-            }
-            else if(type == 2) {
+                
+                char *filename = argv[i];
+
+                // Parent process
+                int status1, status2;
+                pid_t pid1 = -1, pid2 = -1;
+
+                // Fork the first child process (PID1)
+                pid1 = fork();
+
+                if (pid1 == -1) {
+                    perror("Error forking child process (PID1)");
+                    exit(EXIT_FAILURE);
+                } else if (pid1 == 0) {
+                    // Child process (PID1)
+                    // Check if it is a .c file
+                    if (checkFileExtension(filename, "c")) {
+                        runScriptFileFor_c_file(filename);
+                    }
+                    exit(EXIT_SUCCESS);
+                } else {
+                    // Fork the second child process (PID2)
+                    pid2 = fork();
+
+                    if (pid2 == -1) {
+                        perror("Error forking child process (PID2)");
+                        exit(EXIT_FAILURE);
+                    } else if (pid2 == 0) {
+                        // Child process (PID2)
+                        // Count the number of lines in the file
+                        int lineCount = countLinesInFile(filename);
+                        if(lineCount == -1){
+                            printf("Error counting lines in file\n");
+                        } else {
+                            printf("The file %s has %d lines\n", filename, lineCount);
+                        }
+                        exit(EXIT_SUCCESS);
+                    } else {
+                        // Wait for both child processes
+                        if (waitpid(pid1, &status1, 0) == -1) {
+                            perror("Error waiting for child process (PID1)");
+                            exit(EXIT_FAILURE);
+                        }
+
+                        if (waitpid(pid2, &status2, 0) == -1) {
+                            perror("Error waiting for child process (PID2)");
+                            exit(EXIT_FAILURE);
+                        }
+
+                        // Process the exit status of PID1
+                        if (WIFEXITED(status1)) {
+                            printf("The process with PID1 %d has ended with the exit code %d\n\n", pid1, WEXITSTATUS(status1));
+
+                            // Check if it is a .c file
+                            if (checkFileExtension(filename, "c")) {
+                                // Write the score to grades.txt
+                                FILE* gradesFile = fopen("grades.txt", "a");
+                                if (gradesFile == NULL) {
+                                    perror("Error opening grades.txt");
+                                    exit(EXIT_FAILURE);
+                                }
+
+                                fprintf(gradesFile, "%s: %d\n", filename, WEXITSTATUS(status1));
+                                fclose(gradesFile);
+                            }
+                        } else {
+                            printf("Child process with PID1 %d exited abnormally\n\n", pid1);
+                        }
+
+                        // Process the exit status of PID2
+                        if (WIFEXITED(status2)) {
+                            printf("The process with PID2 %d has ended with the exit code %d\n\n", pid2, WEXITSTATUS(status2));
+                        } else {
+                            printf("Child process with PID2 %d exited abnormally\n\n", pid2);
+                        }
+                    }
+                }
+
+                        
+            }else if(type == 2) {
                 printf("%s : DIRECTORY\n", argv[i]);
                 printf("\n\n==========================\n\n");
                 handleDirectory(argv[i]);
