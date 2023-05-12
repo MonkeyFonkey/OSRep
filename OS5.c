@@ -7,6 +7,14 @@
 #include <string.h>
 #include <dirent.h>
 
+#define MAX_FILES 100 // Adjust the maximum number of files as needed
+
+pid_t child_pids[MAX_FILES];
+int num_processes = 0;
+
+
+
+
 int checkFileType(char *path) {
     struct stat buf;
 
@@ -203,7 +211,7 @@ void runScriptFileFor_c_file(const char* filename) {
         perror("Error closing pipe");
     } else {
         if (WIFEXITED(status)) {
-            printf("Script.sh exited with status %d\n", WEXITSTATUS(status));
+           // printf("Script.sh exited with status %d\n", WEXITSTATUS(status));
         } else {
             printf("Script.sh exited abnormally\n");
         }
@@ -353,7 +361,8 @@ if (strstr(filename, extention) != NULL) {
 
 
         if (WIFEXITED(status)) {
-            printf("Child process %d exited with status %d\n\n", pid, WEXITSTATUS(status));
+            printf("The process with PID %d has ended with the exit code %d\n\n", pid, WEXITSTATUS(status));
+
         } else {
             printf("Child process %d exited abnormally\n\n", pid);
         }
